@@ -5,6 +5,10 @@ import static net.lax1dude.eaglercraft.v1_8.opengl.RealOpenGLEnums.*;
 import java.util.ArrayList;
 import java.util.Collection;
 
+import net.minecraft.client.module.Module;
+import net.minecraft.client.module.ModuleManager;
+import net.minecraft.client.module.MinimapModule;
+
 import net.lax1dude.eaglercraft.v1_8.Display;
 import net.lax1dude.eaglercraft.v1_8.EagRuntime;
 import net.lax1dude.eaglercraft.v1_8.EaglercraftRandom;
@@ -24,6 +28,8 @@ import net.lax1dude.eaglercraft.v1_8.touch_gui.TouchOverlayRenderer;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.inventory.GuiInventory;
+import net.minecraft.client.module.MinimapModule;
+import net.minecraft.client.module.ModuleManager;
 import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.entity.RenderItem;
@@ -158,6 +164,13 @@ public class GuiIngame extends Gui {
 			if (f > 0.0F) {
 				this.func_180474_b(f, scaledresolution);
 			}
+			// Draw minimap
+for (Module m : ModuleManager.getModules()) {
+    if (m instanceof MinimapModule) {
+        ((MinimapModule) m).renderMinimap();
+        break;
+    }
+}
 		}
 
 		onBeginHotbarDraw();

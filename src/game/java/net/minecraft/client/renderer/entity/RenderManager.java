@@ -452,7 +452,7 @@ public class RenderManager {
 	 * Renders the bounding box around an entity when F3+B is
 	 * pressed
 	 */
-	private void renderDebugBoundingBox(Entity entityIn, double parDouble1, double parDouble2, double parDouble3,
+	public void renderDebugBoundingBox(Entity entityIn, double parDouble1, double parDouble2, double parDouble3,
 			float parFloat1, float parFloat2) {
 		GlStateManager.depthMask(false);
 		GlStateManager.disableTexture2D();

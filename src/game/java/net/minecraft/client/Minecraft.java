@@ -1,7 +1,6 @@
 package net.minecraft.client;
 
 import static net.lax1dude.eaglercraft.v1_8.opengl.RealOpenGLEnums.*;
-
 import static net.lax1dude.eaglercraft.v1_8.internal.PlatformOpenGL._wglBindFramebuffer;
 
 import java.io.IOException;
@@ -93,6 +92,7 @@ import net.minecraft.client.audio.SoundHandler;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.GuiChat;
+import net.minecraft.client.gui.GuiClientSettings;
 import net.minecraft.client.gui.GuiControls;
 import net.minecraft.client.gui.GuiGameOver;
 import net.minecraft.client.gui.GuiIngame;
@@ -104,6 +104,10 @@ import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.gui.achievement.GuiAchievement;
 import net.minecraft.client.gui.inventory.GuiInventory;
 import net.minecraft.client.main.GameConfiguration;
+import net.minecraft.client.module.ESPModule;
+import net.minecraft.client.module.Module;
+import net.minecraft.client.module.ModuleManager; // <-- NEW
+import net.minecraft.client.module.TracersModule;
 import net.minecraft.client.multiplayer.GuiConnecting;
 import net.minecraft.client.multiplayer.PlayerControllerMP;
 import net.minecraft.client.multiplayer.ServerAddress;
@@ -203,23 +207,7 @@ import net.optifine.Config;
 
 /**+
  * This portion of EaglercraftX contains deobfuscated Minecraft 1.8 source code.
- * 
- * Minecraft 1.8.8 bytecode is (c) 2015 Mojang AB. "Do not distribute!"
- * Mod Coder Pack v9.18 deobfuscation configs are (c) Copyright by the MCP Team
- * 
- * EaglercraftX 1.8 patch files (c) 2022-2025 lax1dude, ayunami2000. All Rights Reserved.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
- * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- * 
+ * ...
  */
 public class Minecraft implements IThreadListener {
 	private static final Logger logger = LogManager.getLogger();
@@ -266,7 +254,7 @@ public class Minecraft implements IThreadListener {
 	public MouseHelper mouseHelper;
 	private final String launchedVersion;
 	private static int debugFPS;
-	private int rightClickDelayTimer;
+	public int rightClickDelayTimer;
 	private String serverName;
 	private int serverPort;
 	public boolean inGameHasFocus;
@@ -277,10 +265,6 @@ public class Minecraft implements IThreadListener {
 	private final boolean jvm64bit;
 	private EaglercraftNetworkManager myNetworkManager;
 	private boolean integratedServerIsRunning;
-	/**+
-	 * Keeps track of how long the debug crash keycombo (F3+C) has
-	 * been pressed for, in order to crash after 10 seconds.
-	 */
 	private long debugCrashKeyPressTime = -1L;
 	private IReloadableResourceManager mcResourceManager;
 	private final IMetadataSerializer metadataSerializer_ = new IMetadataSerializer();
@@ -297,14 +281,7 @@ public class Minecraft implements IThreadListener {
 	private final Thread mcThread = Thread.currentThread();
 	private ModelManager modelManager;
 	private BlockRendererDispatcher blockRenderDispatcher;
-	/**+
-	 * Set to true to keep the game loop running. Set to false by
-	 * shutdown() to allow the game loop to exit cleanly.
-	 */
 	volatile boolean running = true;
-	/**+
-	 * String that shows the debug information
-	 */
 	public String debug = "";
 	public boolean field_175613_B = false;
 	public boolean field_175614_C = false;
@@ -313,9 +290,6 @@ public class Minecraft implements IThreadListener {
 	long debugUpdateTime = getSystemTime();
 	int fpsCounter;
 	long prevFrameTime = -1L;
-	/**+
-	 * Profiler currently displayed in the debug screen pie chart
-	 */
 	private String debugProfilerName = "root";
 	public int joinWorldTickCounter = 0;
 	private int dontPauseTimer = 0;
@@ -334,6 +308,9 @@ public class Minecraft implements IThreadListener {
 	private String reconnectURI = null;
 	public boolean mouseGrabSupported = false;
 	public ScaledResolution scaledResolution = null;
+
+	// --- Client Settings (Right Shift) ---
+	private boolean rightShiftWasPressed = false;
 
 	public Minecraft(GameConfiguration gameConfig) {
 		theMinecraft = this;
@@ -579,7 +556,7 @@ public class Minecraft implements IThreadListener {
 
 	private void createDisplay() {
 		Display.create();
-		Display.setTitle("Eaglercraft 1.8.8");
+		Display.setTitle("NeonSkull Client");
 	}
 
 	private static boolean isJvm64bit() {
@@ -885,10 +862,14 @@ public class Minecraft implements IThreadListener {
 			this.gameSettings.thirdPersonView = 0;
 		}
 
-		if (!this.skipRenderWorld) {
-			this.entityRenderer.func_181560_a(this.timer.renderPartialTicks, i);
-		}
+if (!this.skipRenderWorld) {
+    this.entityRenderer.func_181560_a(this.timer.renderPartialTicks, i);
+}
 
+// Call module renders
+for (Module m : ModuleManager.getModules()) {
+    m.onRender(this.timer.renderPartialTicks);
+}
 		this.guiAchievement.updateAchievementWindow();
 		this.touchOverlayRenderer.render(displayWidth, displayHeight, scaledResolution);
 		GlStateManager.popMatrix();
@@ -1227,6 +1208,14 @@ public class Minecraft implements IThreadListener {
 			this.playerController.updateController();
 		}
 
+		// ===== Custom module updates =====
+		if (!this.isGamePaused && this.theWorld != null && this.thePlayer != null) {
+			for (Module m : ModuleManager.getModules()) {
+				m.onUpdate();
+			}
+		}
+		// =================================
+
 		if (this.thePlayer != null && this.thePlayer.sendQueue != null) {
 			this.thePlayer.sendQueue.getEaglerMessageController().flush();
 		}
@@ -1412,6 +1401,19 @@ public class Minecraft implements IThreadListener {
 				}
 				KeyBinding.setKeyBindState(k, Keyboard.getEventKeyState());
 				if (Keyboard.getEventKeyState()) {
+					// Module keybinds
+if (Keyboard.getEventKeyState()) {
+    int key = Keyboard.getEventKey() == 0 ? Keyboard.getEventCharacter() + 256 : Keyboard.getEventKey();
+    for (Module m : ModuleManager.getModules()) {
+        if (m.getKeyCode() != 0 && m.getKeyCode() == key) {
+            m.toggle();
+            if (thePlayer != null) {
+                thePlayer.addChatMessage(new ChatComponentText(
+                    m.getName() + ": " + (m.isEnabled() ? "ON" : "OFF")));
+            }
+        }
+    }
+}
 					KeyBinding.onTick(k);
 				}
 
@@ -1529,6 +1531,17 @@ public class Minecraft implements IThreadListener {
 					}
 				}
 			}
+
+			// --- Right Shift opens Client Settings GUI ---
+			if (Keyboard.isKeyDown(54)) {   // 54 = Right Shift
+				if (!rightShiftWasPressed && this.currentScreen == null) {
+					this.displayGuiScreen(new GuiClientSettings(null));
+				}
+				rightShiftWasPressed = true;
+			} else {
+				rightShiftWasPressed = false;
+			}
+			// -----------------------------------------------
 
 			for (int l = 0; l < 9; ++l) {
 				if (this.gameSettings.keyBindsHotbar[l].isPressed()) {
