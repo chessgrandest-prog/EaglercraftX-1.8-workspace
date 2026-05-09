@@ -1,6 +1,7 @@
 package net.minecraft.client.gui;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +21,10 @@ public class GuiClientSettings extends GuiScreen {
     private static final int GLOW_GREEN  = 0x8039FF14;
 
     private static final String[] CATEGORY_ORDER = { "Combat", "Movement", "Render", "Misc" };
+
+    // Persistent panel positions (survives menu close/reopen)
+    private static final Map<String, float[]> savedPanelPositions = new HashMap<>();
+    private static final Map<String, Boolean> savedPanelCollapsed = new HashMap<>();
 
     private static class CategoryPanel {
         String category;
@@ -70,11 +75,29 @@ public class GuiClientSettings extends GuiScreen {
             CategoryPanel panel = new CategoryPanel();
             panel.category = cat;
             panel.modules = mods;
-            panel.x = startX;
-            panel.y = startY;
+
+            // Restore saved position if available, otherwise use default layout
+            if (savedPanelPositions.containsKey(cat)) {
+                float[] pos = savedPanelPositions.get(cat);
+                panel.x = pos[0];
+                panel.y = pos[1];
+            } else {
+                panel.x = startX;
+                panel.y = startY;
+            }
+
+            // Restore collapsed state
+            if (savedPanelCollapsed.containsKey(cat)) {
+                panel.collapsed = savedPanelCollapsed.get(cat);
+            }
+
             panels.add(panel);
-            int rows = panel.collapsed ? 0 : mods.size();
-            startY += panel.headerHeight + rows * 14 + 6 + gapY;
+
+            // Only advance default startY for panels that don't have saved positions
+            if (!savedPanelPositions.containsKey(cat)) {
+                int rows = panel.collapsed ? 0 : mods.size();
+                startY += panel.headerHeight + rows * 14 + 6 + gapY;
+            }
         }
 
         if (particles.isEmpty()) {
@@ -106,12 +129,25 @@ public class GuiClientSettings extends GuiScreen {
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         drawRect(0, 0, this.width, this.height, DARK_BG);
 
-        // Particles
-        for (Particle p : particles) {
+        // Particles & Plexus effect
+        for (int i = 0; i < particles.size(); i++) {
+            Particle p1 = particles.get(i);
             int alpha = 0x60;
-            int glow = (alpha << 24) | (p.color & 0x00FFFFFF);
-            drawRect((int)(p.x - 1), (int)(p.y - 1), (int)(p.x + 2), (int)(p.y + 2), glow);
-            drawRect((int)p.x, (int)p.y, (int)p.x + 1, (int)p.y + 1, p.color);
+            int glow = (alpha << 24) | (p1.color & 0x00FFFFFF);
+            drawRect((int)(p1.x - 1), (int)(p1.y - 1), (int)(p1.x + 2), (int)(p1.y + 2), glow);
+            drawRect((int)p1.x, (int)p1.y, (int)p1.x + 1, (int)p1.y + 1, p1.color);
+
+            for (int j = i + 1; j < particles.size(); j++) {
+                Particle p2 = particles.get(j);
+                float distSq = (p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y);
+                if (distSq < 2500) { // 50 pixels distance
+                    float dist = (float)Math.sqrt(distSq);
+                    float lineAlpha = 1.0f - (dist / 50.0f);
+                    int color = (int)(lineAlpha * 0x44) << 24 | (0xFFFFFF & p1.color);
+                    // Draw a thin line (approx with rect)
+                    drawRect((int)p1.x, (int)p1.y, (int)p1.x + 1, (int)p1.y + 1, color);
+                }
+            }
         }
 
         // Panels
@@ -135,16 +171,16 @@ public class GuiClientSettings extends GuiScreen {
         int totalHeight = hh + contentRows * 14 + 6;
 
         // Glow border
-        drawRect(px - 2, py - 2, px + w + 2, py + totalHeight + 2, GLOW_GREEN);
+        this.drawGradientRect(px - 2, py - 2, px + w + 2, py + totalHeight + 2, NEON_PURPLE, NEON_GREEN);
         // Card
         drawRect(px, py, px + w, py + totalHeight, CARD_BG);
 
         // Header
         boolean headerHovered = mouseX >= px && mouseX <= px + w && mouseY >= py && mouseY <= py + hh;
-        int headerColor = headerHovered ? NEON_PURPLE : (NEON_PURPLE & 0x00FFFFFF) | 0xAA000000;
-        drawRect(px, py, px + w, py + hh, headerColor);
+        int headerColor = headerHovered ? NEON_PURPLE : 0xAA000000 | (NEON_PURPLE & 0x00FFFFFF);
+        this.drawGradientRect(px, py, px + w, py + hh, headerColor, 0xFF000000);
 
-        String arrow = panel.collapsed ? "▶" : "▼";
+        String arrow = panel.collapsed ? ">" : "v";
         this.drawString(this.fontRendererObj, arrow, px + 5, py + 4, 0xFFFFFFFF);
         this.drawString(this.fontRendererObj, panel.category.toUpperCase(), px + 18, py + 4, 0xFFFFFFFF);
 
@@ -179,7 +215,6 @@ public class GuiClientSettings extends GuiScreen {
 
     @Override
     protected void mouseClicked(int mouseX, int mouseY, int mouseButton) {
-        // If currently waiting for a key, cancel on any click outside? Let's handle clicks normally but stop rebinding only when ESC is pressed.
         if (mouseButton == 0) {
             for (int i = panels.size() - 1; i >= 0; i--) {
                 CategoryPanel panel = panels.get(i);
@@ -187,7 +222,6 @@ public class GuiClientSettings extends GuiScreen {
 
                 // Header (drag)
                 if (mouseX >= px && mouseX <= px + w && mouseY >= py && mouseY <= py + hh) {
-                    // If we were rebinding, cancel on header click? No, let's keep it simple: only ESC cancels rebinding.
                     draggingIndex = i;
                     dragOffsetX = mouseX - panel.x;
                     dragOffsetY = mouseY - panel.y;
@@ -199,12 +233,7 @@ public class GuiClientSettings extends GuiScreen {
                     int rowY = py + hh + 3;
                     for (Module m : panel.modules) {
                         if (mouseX >= px && mouseX <= px + w && mouseY >= rowY && mouseY <= rowY + 14) {
-                            if (!m.isEnabled()) {
-                                m.toggle(); // left click toggles only if currently off? Or always toggle? Let's toggle.
-                            } else {
-                                // shift-click or something? simple: left click toggles
-                                m.toggle();
-                            }
+                            m.toggle();
                             return;
                         }
                         rowY += 14;
@@ -220,6 +249,7 @@ public class GuiClientSettings extends GuiScreen {
                 // Header right-click = collapse/expand
                 if (mouseX >= px && mouseX <= px + w && mouseY >= py && mouseY <= py + hh) {
                     panel.collapsed = !panel.collapsed;
+                    savedPanelCollapsed.put(panel.category, panel.collapsed);
                     return;
                 }
 
@@ -228,7 +258,6 @@ public class GuiClientSettings extends GuiScreen {
                     int rowY = py + hh + 3;
                     for (Module m : panel.modules) {
                         if (mouseX >= px && mouseX <= px + w && mouseY >= rowY && mouseY <= rowY + 14) {
-                            // Start keybind assignment for this module
                             keybindModule = (keybindModule == m) ? null : m;
                             return;
                         }
@@ -241,6 +270,11 @@ public class GuiClientSettings extends GuiScreen {
 
     @Override
     protected void mouseReleased(int mouseX, int mouseY, int state) {
+        if (draggingIndex >= 0) {
+            // Save position on drag release
+            CategoryPanel panel = panels.get(draggingIndex);
+            savedPanelPositions.put(panel.category, new float[]{ panel.x, panel.y });
+        }
         draggingIndex = -1;
     }
 
@@ -265,7 +299,7 @@ public class GuiClientSettings extends GuiScreen {
         } else if (keyCode == 1 || keyCode == this.mc.gameSettings.keyBindClose.getKeyCode()) {
             // ESC or inventory key closes the GUI
             this.mc.displayGuiScreen(parentGui);
-        } else if (keyCode == 54) { // Right Shift toggles GUI itself (already handled before opening, but just in case)
+        } else if (keyCode == 54) { // Right Shift toggles GUI itself
             this.mc.displayGuiScreen(parentGui);
         }
     }

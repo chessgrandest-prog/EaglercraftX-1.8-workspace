@@ -1,5 +1,7 @@
 package net.minecraft.client.gui;
 
+import net.minecraft.client.gui.GuiMainMenu;
+import net.minecraft.client.gui.GuiCustomMainMenu;
 import net.minecraft.client.resources.I18n;
 
 /**+
@@ -42,7 +44,7 @@ public class GuiMemoryErrorScreen extends GuiScreen {
 	 */
 	protected void actionPerformed(GuiButton parGuiButton) {
 		if (parGuiButton.id == 0) {
-			this.mc.displayGuiScreen(new GuiMainMenu());
+			this.mc.displayGuiScreen(new GuiCustomMainMenu());
 		} else if (parGuiButton.id == 1) {
 			this.mc.shutdown();
 		}

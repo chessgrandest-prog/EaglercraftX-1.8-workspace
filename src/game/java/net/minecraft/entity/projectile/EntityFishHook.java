@@ -100,6 +100,11 @@ public class EntityFishHook extends Entity {
 	private double clientMotionY;
 	private double clientMotionZ;
 
+	/** Client autofish: true while server marks fish as catchable (bobber tug window). */
+	public boolean isCatchablePhase() {
+		return this.ticksCatchable > 0;
+	}
+
 	public static List<WeightedRandomFishable> func_174855_j() {
 		return FISH;
 	}

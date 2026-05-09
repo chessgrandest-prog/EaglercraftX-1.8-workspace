@@ -311,15 +311,18 @@ public class EntityRenderer implements IResourceManagerReloadListener {
 				Vec3 vec3 = entity.getPositionEyes(partialTicks);
 				boolean flag = false;
 				boolean flag1 = true;
+				double maxEntityPickDistance = 3.0D;
 				if (this.mc.playerController.extendedReach()) {
 					d0 = 6.0D;
 					d1 = 6.0D;
+					maxEntityPickDistance = 6.0D;
 				} else {
 					if (d0 > 3.0D) {
 						flag = true;
 					}
-
-					d0 = d0;
+					if (net.minecraft.client.module.ModuleManager.getModule("Reach").isEnabled()) {
+						maxEntityPickDistance = (double) this.mc.playerController.getBlockReachDistance();
+					}
 				}
 
 				if (this.mc.objectMouseOver != null) {
@@ -370,7 +373,7 @@ public class EntityRenderer implements IResourceManagerReloadListener {
 					}
 				}
 
-				if (this.pointedEntity != null && flag && vec3.distanceTo(vec33) > 3.0D) {
+				if (this.pointedEntity != null && flag && vec3.distanceTo(vec33) > maxEntityPickDistance) {
 					this.pointedEntity = null;
 					this.mc.objectMouseOver = new MovingObjectPosition(MovingObjectPosition.MovingObjectType.MISS,
 							vec33, (EnumFacing) null, new BlockPos(vec33));
@@ -1205,6 +1208,13 @@ public class EntityRenderer implements IResourceManagerReloadListener {
 		double d0 = entity.lastTickPosX + (entity.posX - entity.lastTickPosX) * (double) partialTicks;
 		double d1 = entity.lastTickPosY + (entity.posY - entity.lastTickPosY) * (double) partialTicks;
 		double d2 = entity.lastTickPosZ + (entity.posZ - entity.lastTickPosZ) * (double) partialTicks;
+		net.minecraft.client.module.Module fcm = net.minecraft.client.module.ModuleManager.getModule("Freecam");
+		if (fcm != null && fcm.isEnabled() && fcm instanceof net.minecraft.client.module.FreecamModule) {
+			net.minecraft.client.module.FreecamModule fm = (net.minecraft.client.module.FreecamModule) fcm;
+			d0 = fm.getInterpCamX(partialTicks);
+			d1 = fm.getInterpCamY(partialTicks);
+			d2 = fm.getInterpCamZ(partialTicks);
+		}
 		TileEntityRendererDispatcher.staticPlayerX = d0; // hack, needed for some eagler stuff
 		TileEntityRendererDispatcher.staticPlayerY = d1;
 		TileEntityRendererDispatcher.staticPlayerZ = d2;
@@ -1338,6 +1348,12 @@ public class EntityRenderer implements IResourceManagerReloadListener {
 		if (entity.posY + (double) entity.getEyeHeight() >= 128.0D) {
 			this.renderCloudsCheck(renderglobal, partialTicks, pass);
 		}
+
+		// ===== Custom module 3D renders =====
+		for (net.minecraft.client.module.Module m : net.minecraft.client.module.ModuleManager.getModules()) {
+			m.onRender3D(partialTicks);
+		}
+		// ====================================
 
 		if (this.renderHand) {
 			GlStateManager.clear(GL_DEPTH_BUFFER_BIT);

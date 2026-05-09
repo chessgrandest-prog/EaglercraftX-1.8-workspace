@@ -4,7 +4,9 @@ import net.minecraft.block.material.MapColor;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.creativetab.CreativeTabs;
+import net.minecraft.client.module.ModuleManager;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.BlockPos;
 import net.minecraft.world.World;
@@ -46,6 +48,9 @@ public class BlockSoulSand extends Block {
 	 * Called When an Entity Collided with the Block
 	 */
 	public void onEntityCollidedWithBlock(World var1, BlockPos var2, IBlockState var3, Entity entity) {
+		if (entity.worldObj.isRemote && entity instanceof EntityPlayer && ModuleManager.getModule("NoSlowDown").isEnabled()) {
+			return;
+		}
 		entity.motionX *= 0.4D;
 		entity.motionZ *= 0.4D;
 	}

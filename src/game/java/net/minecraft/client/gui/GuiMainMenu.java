@@ -92,6 +92,8 @@ public class GuiMainMenu extends GuiScreen implements GuiYesNoCallback {
 	private static final ResourceLocation splashTexts = new ResourceLocation("texts/splashes.txt");
 	private static final ResourceLocation minecraftTitleTextures = new ResourceLocation(
 			"textures/gui/title/minecraft.png");
+	private static final ResourceLocation neonSkullBackground = new ResourceLocation(
+			"textures/gui/title/neonskull_background.png");
 	private static final ResourceLocation minecraftTitleBlurFlag = new ResourceLocation(
 			"textures/gui/title/background/enable_blur.txt");
 	private static final ResourceLocation eaglerGuiTextures = new ResourceLocation("eagler:gui/eagler_gui.png");
@@ -598,35 +600,21 @@ public class GuiMainMenu extends GuiScreen implements GuiYesNoCallback {
 	 */
 	public void drawScreen(int i, int j, float f) {
 		GlStateManager.disableAlpha();
-		if (enableBlur) {
-			this.renderSkybox(i, j, f);
-		} else {
-			this.drawPanorama(i, j, f);
-		}
+		this.mc.getTextureManager().bindTexture(neonSkullBackground);
+		GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+		this.drawModalRectWithCustomSizedTexture(0, 0, 0, 0, this.width, this.height, this.width, this.height);
 		GlStateManager.enableAlpha();
 		short short1 = 274;
 		int k = this.width / 2 - short1 / 2;
 		byte b0 = 30;
-		if (enableBlur) {
-			this.drawGradientRect(0, 0, this.width, this.height, -2130706433, 16777215);
-			this.drawGradientRect(0, 0, this.width, this.height, 0, Integer.MIN_VALUE);
-		}
-		this.mc.getTextureManager().bindTexture(minecraftTitleTextures);
-		GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
-		boolean minc = (double) this.updateCounter < 1.0E-4D;
-		if (this.isDefault) {
-			minc = !minc;
-		}
-		if (minc) {
-			this.drawTexturedModalRect(k + 0, b0 + 0, 0, 0, 99, 44);
-			this.drawTexturedModalRect(k + 99, b0 + 0, 129, 0, 27, 44);
-			this.drawTexturedModalRect(k + 99 + 26, b0 + 0, 126, 0, 3, 44);
-			this.drawTexturedModalRect(k + 99 + 26 + 3, b0 + 0, 99, 0, 26, 44);
-			this.drawTexturedModalRect(k + 154, b0 + 0, 0, 45, 155, 44);
-		} else {
-			this.drawTexturedModalRect(k + 0, b0 + 0, 0, 0, 155, 44);
-			this.drawTexturedModalRect(k + 155, b0 + 0, 0, 45, 155, 44);
-		}
+
+		GlStateManager.pushMatrix();
+		GlStateManager.translate(this.width / 2.0f, 30.0f, 0.0f);
+		float scale = 4.0f; // Scale up the text to match logo size
+		GlStateManager.scale(scale, scale, 1.0f);
+		String title = "NEONSKULL";
+		this.drawCenteredString(this.fontRendererObj, title, 0, 0, 0xFFFFFF);
+		GlStateManager.popMatrix();
 
 		boolean isForkLabel = ((this.openGLWarning1 != null && this.openGLWarning1.length() > 0)
 				|| (this.openGLWarning2 != null && this.openGLWarning2.length() > 0));

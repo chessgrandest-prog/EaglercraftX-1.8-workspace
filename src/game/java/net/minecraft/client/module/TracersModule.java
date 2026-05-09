@@ -1,9 +1,14 @@
 package net.minecraft.client.module;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.Gui;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
+import net.lax1dude.eaglercraft.v1_8.opengl.EaglercraftGPU;
+import net.lax1dude.eaglercraft.v1_8.opengl.GlStateManager;
+import net.minecraft.client.renderer.Tessellator;
+import net.lax1dude.eaglercraft.v1_8.opengl.WorldRenderer;
+import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
+import static net.lax1dude.eaglercraft.v1_8.opengl.RealOpenGLEnums.*;
 
 public class TracersModule extends Module {
 
@@ -12,45 +17,52 @@ public class TracersModule extends Module {
     }
 
     @Override
-    public void onRender(float partialTicks) {   // <-- now matches the base class
+    public void onRender3D(float partialTicks) {
         if (!isEnabled()) return;
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.theWorld == null || mc.thePlayer == null) return;
 
-        int cx = mc.displayWidth / 2;
-        int cy = mc.displayHeight / 2;
+        double viewerX = mc.getRenderManager().viewerPosX;
+        double viewerY = mc.getRenderManager().viewerPosY;
+        double viewerZ = mc.getRenderManager().viewerPosZ;
+
+        Entity rv = mc.getRenderViewEntity();
+        double eye = rv instanceof net.minecraft.entity.EntityLivingBase
+                ? (double) ((net.minecraft.entity.EntityLivingBase) rv).getEyeHeight()
+                : 1.62D;
+        double sx = 0.0D;
+        double sy = eye;
+        double sz = 0.0D;
+
+        GlStateManager.pushMatrix();
+        GlStateManager.disableTexture2D();
+        GlStateManager.disableLighting();
+        GlStateManager.disableDepth();
+        EaglercraftGPU.glLineWidth(1.5F);
+
+        Tessellator tessellator = Tessellator.getInstance();
+        WorldRenderer worldrenderer = tessellator.getWorldRenderer();
+
+        worldrenderer.begin(GL_LINES, DefaultVertexFormats.POSITION_COLOR);
 
         for (Object o : mc.theWorld.loadedEntityList) {
             Entity entity = (Entity) o;
             if (entity == mc.thePlayer) continue;
             if (!(entity instanceof EntityLivingBase)) continue;
 
-            double dx = entity.posX - mc.getRenderManager().viewerPosX;
-            double dy = entity.posY + entity.getEyeHeight() - mc.getRenderManager().viewerPosY;
-            double dz = entity.posZ - mc.getRenderManager().viewerPosZ;
+            double x = entity.lastTickPosX + (entity.posX - entity.lastTickPosX) * partialTicks - viewerX;
+            double y = entity.lastTickPosY + (entity.posY - entity.lastTickPosY) * partialTicks - viewerY;
+            double z = entity.lastTickPosZ + (entity.posZ - entity.lastTickPosZ) * partialTicks - viewerZ;
 
-            if (dz <= 0.1) continue;
-
-            double fov = 70.0;
-            double scale = mc.displayHeight / (2.0 * Math.tan(Math.toRadians(fov / 2.0)));
-            double sx = mc.displayWidth / 2.0 + (dx / dz) * scale;
-            double sy = mc.displayHeight / 2.0 - (dy / dz) * scale;
-
-            drawLine(cx, cy, (int)sx, (int)sy, 0xFFFF0000);
+            worldrenderer.pos(sx, sy, sz).color(255, 0, 0, 255).endVertex();
+            worldrenderer.pos(x, y + entity.height / 2.0F, z).color(255, 0, 0, 255).endVertex();
         }
-    }
 
-    private void drawLine(int x1, int y1, int x2, int y2, int color) {
-        if (x1 == x2 && y1 == y2) return;
-        float dx = x2 - x1;
-        float dy = y2 - y1;
-        float steps = Math.max(Math.abs(dx), Math.abs(dy));
-        float xInc = dx / steps;
-        float yInc = dy / steps;
-        for (int i = 0; i <= steps; i++) {
-            int x = (int)(x1 + xInc * i);
-            int y = (int)(y1 + yInc * i);
-            Gui.drawRect(x, y, x + 1, y + 1, color);
-        }
+        tessellator.draw();
+
+        GlStateManager.enableDepth();
+        GlStateManager.enableLighting();
+        GlStateManager.enableTexture2D();
+        GlStateManager.popMatrix();
     }
 }

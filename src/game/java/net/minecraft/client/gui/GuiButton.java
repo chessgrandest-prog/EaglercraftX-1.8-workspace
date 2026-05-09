@@ -42,6 +42,8 @@ public class GuiButton extends Gui {
 	public boolean visible;
 	protected boolean hovered;
 	public float fontScale = 1.0f;
+	protected float animationProgress = 0.0f;
+	protected long lastTime = 0;
 
 	public GuiButton(int buttonId, int x, int y, String buttonText) {
 		this(buttonId, x, y, 200, 20, buttonText);
@@ -82,20 +84,50 @@ public class GuiButton extends Gui {
 	public void drawButton(Minecraft mc, int mouseX, int mouseY) {
 		if (this.visible) {
 			FontRenderer fontrenderer = mc.fontRendererObj;
-			mc.getTextureManager().bindTexture(buttonTextures);
-			GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
 			this.hovered = mouseX >= this.xPosition && mouseY >= this.yPosition && mouseX < this.xPosition + this.width
 					&& mouseY < this.yPosition + this.height;
 			if (this.enabled && this.hovered) {
 				Mouse.showCursor(EnumCursorType.HAND);
 			}
-			int i = this.getHoverState(this.hovered);
+
+			long currentTime = Minecraft.getSystemTime();
+			if (this.lastTime == 0) this.lastTime = currentTime;
+			float deltaTime = (currentTime - this.lastTime) / 1000.0f;
+			this.lastTime = currentTime;
+
+			if (this.hovered && this.enabled) {
+				this.animationProgress += deltaTime * 5.0f;
+				if (this.animationProgress > 1.0f) this.animationProgress = 1.0f;
+			} else {
+				this.animationProgress -= deltaTime * 5.0f;
+				if (this.animationProgress < 0.0f) this.animationProgress = 0.0f;
+			}
+
 			GlStateManager.enableBlend();
 			GlStateManager.tryBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, 1, 0);
 			GlStateManager.blendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-			this.drawTexturedModalRect(this.xPosition, this.yPosition, 0, 46 + i * 20, this.width / 2, this.height);
-			this.drawTexturedModalRect(this.xPosition + this.width / 2, this.yPosition, 200 - this.width / 2,
-					46 + i * 20, this.width / 2, this.height);
+
+			// Draw clean modern background
+			int bgAlpha = (int)(100 + 50 * this.animationProgress);
+			if (!this.enabled) bgAlpha = 50;
+			int backgroundColor = (bgAlpha << 24) | 0x000000;
+			this.drawRect(this.xPosition, this.yPosition, this.xPosition + this.width, this.yPosition + this.height, backgroundColor);
+
+			// Draw glowing border
+			float pulse = 0.5f + 0.5f * (float)Math.sin(currentTime / 200.0);
+			int red = 100 + (this.id * 10) % 150;
+			int green = 50 + (this.id * 25) % 200;
+			int blue = 200 + (this.id * 5) % 55;
+			if (!this.enabled) { red = 100; green = 100; blue = 100; }
+			
+			float borderAlpha = 0.3f + 0.7f * this.animationProgress * pulse;
+			int borderColor = ((int)(borderAlpha * 255) << 24) | (red << 16) | (green << 8) | blue;
+
+			this.drawHorizontalLine(this.xPosition, this.xPosition + this.width - 1, this.yPosition, borderColor);
+			this.drawHorizontalLine(this.xPosition, this.xPosition + this.width - 1, this.yPosition + this.height - 1, borderColor);
+			this.drawVerticalLine(this.xPosition, this.yPosition, this.yPosition + this.height - 1, borderColor);
+			this.drawVerticalLine(this.xPosition + this.width - 1, this.yPosition, this.yPosition + this.height - 1, borderColor);
+
 			this.mouseDragged(mc, mouseX, mouseY);
 			int j = 14737632;
 			if (!this.enabled) {
@@ -103,6 +135,13 @@ public class GuiButton extends Gui {
 			} else if (this.hovered) {
 				j = 16777120;
 			}
+
+			// Apply slight scale on hover
+			float scale = 1.0f + 0.05f * this.animationProgress;
+			GlStateManager.pushMatrix();
+			GlStateManager.translate(this.xPosition + this.width / 2.0f, this.yPosition + this.height / 2.0f, 0.0f);
+			GlStateManager.scale(scale, scale, 1.0f);
+			GlStateManager.translate(-(this.xPosition + this.width / 2.0f), -(this.yPosition + this.height / 2.0f), 0.0f);
 
 			if (fontScale == 1.0f) {
 				this.drawCenteredString(fontrenderer, this.displayString, this.xPosition + this.width / 2,
@@ -119,6 +158,7 @@ public class GuiButton extends Gui {
 				fontrenderer.drawStringWithShadow(displayString, 0, 0, j);
 				GlStateManager.popMatrix();
 			}
+			GlStateManager.popMatrix();
 		}
 	}
 

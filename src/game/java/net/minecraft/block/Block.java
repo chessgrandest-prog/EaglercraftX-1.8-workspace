@@ -35,6 +35,8 @@ import net.minecraft.world.EnumSkyBlock;
 import net.minecraft.world.Explosion;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
+import net.minecraft.client.module.ModuleManager;
+import net.minecraft.client.module.XRayModule;
 
 /**+
  * This portion of EaglercraftX contains deobfuscated Minecraft 1.8 source code.
@@ -415,6 +417,9 @@ public class Block {
 	}
 
 	public boolean shouldSideBeRendered(IBlockAccess iblockaccess, BlockPos blockpos, EnumFacing enumfacing) {
+		if (ModuleManager.getModule("X-Ray").isEnabled()) {
+			return XRayModule.isXRayBlock(this);
+		}
 		return enumfacing == EnumFacing.DOWN && this.minY > 0.0D ? true
 				: (enumfacing == EnumFacing.UP && this.maxY < 1.0D ? true
 						: (enumfacing == EnumFacing.NORTH && this.minZ > 0.0D ? true

@@ -2,6 +2,7 @@ package net.minecraft.client.module;
 
 import net.minecraft.client.Minecraft;
 
+/** Former Phase behavior: clip-style movement assist (see PhaseModule for wall phase). */
 public class AirJumpModule extends Module {
     public AirJumpModule() { super("AirJump", "Movement"); }
 
@@ -10,9 +11,16 @@ public class AirJumpModule extends Module {
         if (!isEnabled()) return;
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.thePlayer == null) return;
-        if (mc.gameSettings.keyBindJump.isKeyDown()) {
-            if (mc.thePlayer.onGround) return; // normal jump
-            mc.thePlayer.motionY = 0.42D; // jump boost in air
+        mc.thePlayer.noClip = true;
+        mc.thePlayer.fallDistance = 0;
+        mc.thePlayer.onGround = true;
+    }
+
+    @Override
+    public void onDisable() {
+        Minecraft mc = Minecraft.getMinecraft();
+        if (mc.thePlayer != null) {
+            mc.thePlayer.noClip = false;
         }
     }
 }

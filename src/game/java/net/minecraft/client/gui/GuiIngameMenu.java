@@ -1,5 +1,7 @@
 package net.minecraft.client.gui;
 
+import net.minecraft.client.gui.GuiCustomMainMenu;
+
 import net.lax1dude.eaglercraft.v1_8.EagRuntime;
 import net.lax1dude.eaglercraft.v1_8.Mouse;
 import net.lax1dude.eaglercraft.v1_8.PauseMenuCustomizeState;
@@ -141,9 +143,9 @@ public class GuiIngameMenu extends GuiScreen {
 			this.mc.theWorld.sendQuittingDisconnectingPacket();
 			this.mc.loadWorld((WorldClient) null);
 			if (flag) {
-				this.mc.shutdownIntegratedServer(new GuiMainMenu());
+				this.mc.shutdownIntegratedServer(new GuiCustomMainMenu());
 			} else {
-				this.mc.shutdownIntegratedServer(new GuiMultiplayer(new GuiMainMenu()));
+				this.mc.shutdownIntegratedServer(new GuiMultiplayer(new GuiCustomMainMenu()));
 			}
 		case 2:
 		case 3:

@@ -42,6 +42,7 @@ import net.minecraft.client.gui.GuiChat;
 import net.minecraft.client.gui.GuiDisconnected;
 import net.minecraft.client.gui.GuiDownloadTerrain;
 import net.minecraft.client.gui.GuiMainMenu;
+import net.minecraft.client.gui.GuiCustomMainMenu;
 import net.minecraft.client.gui.GuiMerchant;
 import net.minecraft.client.gui.GuiMultiplayer;
 import net.minecraft.client.gui.GuiScreen;
@@ -222,6 +223,8 @@ import net.minecraft.world.WorldProviderSurface;
 import net.minecraft.world.WorldSettings;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.storage.MapData;
+import net.minecraft.client.module.ModuleManager;
+import net.minecraft.client.module.BlinkModule;
 
 /**+
  * This portion of EaglercraftX contains deobfuscated Minecraft 1.8 source code.
@@ -568,6 +571,8 @@ public class NetHandlerPlayClient implements INetHandlerPlayClient {
 	public void handleEntityVelocity(S12PacketEntityVelocity packetIn) {
 		Entity entity = this.clientWorldController.getEntityByID(packetIn.getEntityID());
 		if (entity != null) {
+			if (entity == this.gameController.thePlayer && ModuleManager.getModule("Velocity").isEnabled())
+				return;
 			entity.setVelocity((double) packetIn.getMotionX() / 8000.0D, (double) packetIn.getMotionY() / 8000.0D,
 					(double) packetIn.getMotionZ() / 8000.0D);
 		}
@@ -834,11 +839,16 @@ public class NetHandlerPlayClient implements INetHandlerPlayClient {
 					new GuiDisconnected(this.guiScreenServer, "disconnect.lost", ichatcomponent));
 		} else {
 			this.gameController.shutdownIntegratedServer(
-					new GuiDisconnected(new GuiMultiplayer(new GuiMainMenu()), "disconnect.lost", ichatcomponent));
+					new GuiDisconnected(new GuiMultiplayer(new GuiCustomMainMenu()), "disconnect.lost", ichatcomponent));
 		}
 	}
 
 	public void addToSendQueue(Packet parPacket) {
+		BlinkModule blink = (BlinkModule) ModuleManager.getModule("Blink");
+		if (blink.isEnabled()) {
+			blink.getPacketQueue().add(parPacket);
+			return;
+		}
 		this.netManager.sendPacket(parPacket);
 	}
 

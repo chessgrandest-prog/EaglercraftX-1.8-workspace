@@ -5,17 +5,24 @@ import net.minecraft.block.material.MapColor;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
+import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.util.BlockPos;
 import net.minecraft.world.World;
+import net.minecraft.world.chunk.Chunk;
+import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.lax1dude.eaglercraft.v1_8.opengl.GlStateManager;
+import net.minecraft.util.ResourceLocation;
 
 public class MinimapModule extends Module {
 
-    private static final int SIZE = 64;            // map width/height in pixels
-    private static final int UPDATE_INTERVAL = 10;  // ticks between updates
+    private static final int SIZE = 64;
+    private static final int UPDATE_INTERVAL = 10;
 
-    private int[] colors = new int[SIZE * SIZE];   // cached pixel colours
     private int tickCounter = 0;
     private boolean needsUpdate = true;
+
+    private DynamicTexture texture;
+    private ResourceLocation textureLocation;
 
     public MinimapModule() {
         super("Minimap", "Render");
@@ -24,14 +31,18 @@ public class MinimapModule extends Module {
     @Override
     public void toggle() {
         super.toggle();
-        needsUpdate = true;  // refresh when toggled on
+        needsUpdate = true;
     }
 
-    /** Called from GuiIngame.renderGameOverlay */
     public void renderMinimap() {
         if (!isEnabled()) return;
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.theWorld == null || mc.thePlayer == null) return;
+
+        if (texture == null) {
+            texture = new DynamicTexture(SIZE, SIZE);
+            textureLocation = mc.getTextureManager().getDynamicTextureLocation("minimap", texture);
+        }
 
         tickCounter++;
         if (tickCounter >= UPDATE_INTERVAL) {
@@ -41,28 +52,22 @@ public class MinimapModule extends Module {
 
         if (needsUpdate) {
             updateMinimap(mc);
+            texture.updateDynamicTexture();
             needsUpdate = false;
         }
 
-        // Position (top‑right, adjust as you like)
-        int x = mc.displayWidth / 2 + 100;
+        ScaledResolution sr = mc.scaledResolution != null ? mc.scaledResolution : new ScaledResolution(mc);
+        int sw = sr.getScaledWidth();
+        int x = sw - SIZE - 10;
         int y = 10;
 
-        // Dark frame
         Gui.drawRect(x - 1, y - 1, x + SIZE + 1, y + SIZE + 1, 0xAA000000);
 
-        // Draw terrain
-        for (int py = 0; py < SIZE; py++) {
-            for (int px = 0; px < SIZE; px++) {
-                int idx = py * SIZE + px;
-                int color = colors[idx];
-                if (color != 0) {
-                    Gui.drawRect(x + px, y + py, x + px + 1, y + py + 1, color);
-                }
-            }
-        }
+        GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+        mc.getTextureManager().bindTexture(textureLocation);
+        GlStateManager.enableBlend();
+        Gui.drawModalRectWithCustomSizedTexture(x, y, 0, 0, SIZE, SIZE, SIZE, SIZE);
 
-        // Player marker (white border with red center)
         int cx = x + SIZE / 2;
         int cy = y + SIZE / 2;
         Gui.drawRect(cx - 1, cy - 1, cx + 2, cy + 2, 0xFFFFFFFF);
@@ -74,40 +79,37 @@ public class MinimapModule extends Module {
         int playerX = (int) Math.floor(mc.thePlayer.posX);
         int playerZ = (int) Math.floor(mc.thePlayer.posZ);
 
+        int[] pixels = texture.getTextureData();
+
         for (int iz = 0; iz < SIZE; iz++) {
             for (int ix = 0; ix < SIZE; ix++) {
                 int worldX = playerX + (ix - SIZE / 2);
                 int worldZ = playerZ + (iz - SIZE / 2);
 
-                // Find the highest solid block at this column
-                BlockPos topPos = getTopBlock(world, worldX, worldZ);
-                if (topPos == null) {
-                    colors[iz * SIZE + ix] = 0xFF000000; // black if void
-                    continue;
+                Chunk chunk = world.getChunkFromBlockCoords(new BlockPos(worldX, 0, worldZ));
+                int lx = Math.floorMod(worldX, 16);
+                int lz = Math.floorMod(worldZ, 16);
+                int y = chunk.getHeightValue(lx, lz);
+
+                BlockPos pos = new BlockPos(worldX, y, worldZ);
+                Block block = world.getBlockState(pos).getBlock();
+
+                while (block.getMaterial() == Material.air && y > 0) {
+                    y--;
+                    pos = new BlockPos(worldX, y, worldZ);
+                    block = world.getBlockState(pos).getBlock();
                 }
 
-                Block block = world.getBlockState(topPos).getBlock();
-                MapColor mapColor = block.getMapColor(world.getBlockState(topPos));
+                MapColor mapColor = block.getMapColor(world.getBlockState(pos));
+                int argb;
                 if (mapColor == null) {
-                    colors[iz * SIZE + ix] = 0xFF000000;
+                    argb = 0xFF202020;
                 } else {
-                    colors[iz * SIZE + ix] = mapColor.colorValue | 0xFF000000;
+                    int rgb = mapColor.colorValue & 0xFFFFFF;
+                    argb = 0xFF000000 | rgb;
                 }
+                pixels[iz * SIZE + ix] = argb;
             }
         }
-    }
-
-    /**
-     * Finds the highest non‑air block directly above the ground,
-     * starting from the build limit and moving down.
-     */
-    private BlockPos getTopBlock(World world, int x, int z) {
-        for (int y = 255; y > 0; y--) {
-            BlockPos pos = new BlockPos(x, y, z);
-            if (world.getBlockState(pos).getBlock().getMaterial() != Material.air) {
-                return pos;
-            }
-        }
-        return null;
     }
 }

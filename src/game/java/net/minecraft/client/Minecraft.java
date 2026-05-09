@@ -98,6 +98,7 @@ import net.minecraft.client.gui.GuiGameOver;
 import net.minecraft.client.gui.GuiIngame;
 import net.minecraft.client.gui.GuiIngameMenu;
 import net.minecraft.client.gui.GuiMainMenu;
+import net.minecraft.client.gui.GuiCustomMainMenu;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiSleepMP;
 import net.minecraft.client.gui.ScaledResolution;
@@ -497,7 +498,7 @@ public class Minecraft implements IThreadListener {
 		EaglerProfile.read();
 		ServerCookieDataStore.load();
 
-		GuiScreen mainMenu = new GuiMainMenu();
+		GuiScreen mainMenu = new GuiCustomMainMenu();
 		if (isDemo()) {
 			mainMenu = new GuiScreenDemoIntegratedServerStartup(mainMenu);
 		}
@@ -721,7 +722,7 @@ public class Minecraft implements IThreadListener {
 		}
 
 		if (guiScreenIn == null && this.theWorld == null) {
-			guiScreenIn = new GuiMainMenu();
+			guiScreenIn = new GuiCustomMainMenu();
 		} else if (guiScreenIn == null && this.thePlayer.getHealth() <= 0.0F) {
 			guiScreenIn = new GuiGameOver();
 		}
@@ -1022,7 +1023,7 @@ for (Module m : ModuleManager.getModules()) {
 		}
 	}
 
-	private void clickMouse() {
+	public void clickMouse() {
 		if (this.leftClickCounter <= 0) {
 			this.thePlayer.swingItem();
 			if (this.objectMouseOver == null) {
@@ -1058,7 +1059,11 @@ for (Module m : ModuleManager.getModules()) {
 	 */
 	public void rightClickMouse() {
 		if (!this.playerController.func_181040_m()) {
-			this.rightClickDelayTimer = 4;
+			if (ModuleManager.getModule("FastPlace").isEnabled()) {
+				this.rightClickDelayTimer = 0;
+			} else {
+				this.rightClickDelayTimer = 4;
+			}
 			boolean flag = true;
 			ItemStack itemstack = this.thePlayer.inventory.getCurrentItem();
 			if (this.objectMouseOver == null) {
@@ -1221,6 +1226,16 @@ for (Module m : ModuleManager.getModules()) {
 		}
 
 		if (!this.isGamePaused) {
+			if (this.currentScreen == null) {
+				Module autoClicker = ModuleManager.getModule("AutoClicker");
+				if (autoClicker.isEnabled()) {
+					if (this.gameSettings.keyBindAttack.isKeyDown()) {
+						if (this.thePlayer.ticksExisted % 2 == 0) { // Click every 2 ticks
+							this.clickMouse();
+						}
+					}
+				}
+			}
 			this.renderEngine.tick();
 			GlStateManager.viewport(0, 0, displayWidth, displayHeight); // to be safe
 			GlStateManager.enableAlpha();
@@ -1776,7 +1791,7 @@ if (Keyboard.getEventKeyState()) {
 				}
 				ServerAddress addr = AddressResolver.resolveAddressFromURI(reconURI);
 				this.displayGuiScreen(
-						new GuiConnecting(new GuiMainMenu(), this, addr.getIP(), addr.getPort(), enableCookies));
+						new GuiConnecting(new GuiCustomMainMenu(), this, addr.getIP(), addr.getPort(), enableCookies));
 			} else {
 				logger.warn("Server redirect blocked: {}", reconURI);
 			}
@@ -1862,10 +1877,10 @@ if (Keyboard.getEventKeyState()) {
 				Math.max(gameSettings.renderDistanceChunks, 2), worldSettingsIn);
 		EagRuntime.setMCServerWindowGlobal("singleplayer");
 		this.displayGuiScreen(new GuiScreenIntegratedServerBusy(
-				new GuiScreenSingleplayerConnecting(new GuiMainMenu(), "Connecting to " + folderName),
+				new GuiScreenSingleplayerConnecting(new GuiCustomMainMenu(), "Connecting to " + folderName),
 				"singleplayer.busy.startingIntegratedServer", "singleplayer.failed.startingIntegratedServer",
 				() -> SingleplayerServerController.isWorldReady(), (t, u) -> {
-					Minecraft.this.displayGuiScreen(GuiScreenIntegratedServerBusy.createException(new GuiMainMenu(),
+					Minecraft.this.displayGuiScreen(GuiScreenIntegratedServerBusy.createException(new GuiCustomMainMenu(),
 							((GuiScreenIntegratedServerBusy) t).failMessage, u));
 				}));
 	}

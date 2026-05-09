@@ -12,6 +12,7 @@ import net.lax1dude.eaglercraft.v1_8.voice.EnumVoiceChannelStatus;
 import net.lax1dude.eaglercraft.v1_8.voice.VoiceClientController;
 import net.lax1dude.eaglercraft.v1_8.voice.VoiceTagRenderer;
 import net.minecraft.block.Block;
+import net.minecraft.client.module.ModuleManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityOtherPlayerMP;
 import net.minecraft.client.gui.FontRenderer;
@@ -350,6 +351,7 @@ public abstract class Render<T extends Entity> {
 	 * Renders an entity's name above its head
 	 */
 	public void renderLivingLabel(T entityIn, String str, double x, double y, double z, int maxDistance) {
+		if (ModuleManager.getModule("NameTags").isEnabled() && entityIn instanceof EntityPlayer) return;
 		double d0 = entityIn.getDistanceSqToEntity(this.renderManager.livingPlayer);
 		if (d0 <= (double) (maxDistance * maxDistance)) {
 			if (DeferredStateManager.isInDeferredPass()) {

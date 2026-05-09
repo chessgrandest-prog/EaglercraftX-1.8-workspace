@@ -87,7 +87,7 @@ public class GuiGameOver extends GuiScreen implements GuiYesNoCallback {
 				} else {
 					this.mc.theWorld.sendQuittingDisconnectingPacket();
 					this.mc.loadWorld((WorldClient) null);
-					this.mc.shutdownIntegratedServer(new GuiMainMenu());
+					this.mc.shutdownIntegratedServer(new GuiCustomMainMenu());
 				}
 			} else {
 				GuiYesNo guiyesno = new GuiYesNo(this, I18n.format("deathScreen.quit.confirm", new Object[0]), "",
@@ -104,7 +104,7 @@ public class GuiGameOver extends GuiScreen implements GuiYesNoCallback {
 		if (flag) {
 			this.mc.theWorld.sendQuittingDisconnectingPacket();
 			this.mc.loadWorld((WorldClient) null);
-			this.mc.shutdownIntegratedServer(new GuiMainMenu());
+			this.mc.shutdownIntegratedServer(new GuiCustomMainMenu());
 		} else {
 			this.mc.thePlayer.respawnPlayer();
 			this.mc.displayGuiScreen((GuiScreen) null);

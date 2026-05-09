@@ -53,6 +53,8 @@ import net.minecraft.util.StatCollector;
 import net.minecraft.util.Vec3;
 import net.minecraft.world.Explosion;
 import net.minecraft.world.World;
+import net.minecraft.client.module.ModuleManager;
+import net.minecraft.block.Block;
 import net.minecraft.world.WorldServer;
 
 /**+
@@ -461,18 +463,24 @@ public abstract class Entity implements ICommandSender {
 			double d2 = this.posZ;
 			if (this.isInWeb) {
 				this.isInWeb = false;
-				x *= 0.25D;
-				y *= 0.05000000074505806D;
-				z *= 0.25D;
-				this.motionX = 0.0D;
-				this.motionY = 0.0D;
-				this.motionZ = 0.0D;
+				boolean bypassWeb = this.worldObj.isRemote && this instanceof EntityPlayer
+						&& ModuleManager.getModule("NoSlowDown").isEnabled();
+				if (!bypassWeb) {
+					x *= 0.25D;
+					y *= 0.05000000074505806D;
+					z *= 0.25D;
+					this.motionX = 0.0D;
+					this.motionY = 0.0D;
+					this.motionZ = 0.0D;
+				}
 			}
 
 			double d3 = x;
 			double d4 = y;
 			double d5 = z;
-			boolean flag = this.onGround && this.isSneaking() && this instanceof EntityPlayer;
+			boolean flag = this.onGround
+					&& (this.isSneaking() || (this instanceof EntityPlayer && ModuleManager.getModule("SafeWalk").isEnabled()))
+					&& this instanceof EntityPlayer;
 			if (flag) {
 				double d6;
 				for (d6 = 0.05D; x != 0.0D && this.worldObj

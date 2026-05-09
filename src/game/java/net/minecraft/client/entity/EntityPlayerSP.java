@@ -23,6 +23,7 @@ import net.minecraft.client.gui.inventory.GuiFurnace;
 import net.minecraft.client.gui.inventory.GuiScreenHorseInventory;
 import net.minecraft.client.network.NetHandlerPlayClient;
 import net.minecraft.command.server.CommandBlockLogic;
+import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.IMerchant;
 import net.minecraft.entity.item.EntityItem;
@@ -54,6 +55,7 @@ import net.minecraft.util.MovementInput;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.IInteractionObject;
 import net.minecraft.world.World;
+import net.minecraft.client.module.ModuleManager;
 
 /**+
  * This portion of EaglercraftX contains deobfuscated Minecraft 1.8 source code.
@@ -660,9 +662,11 @@ public class EntityPlayerSP extends AbstractClientPlayer {
 		boolean flag2 = this.movementInput.moveForward >= f;
 		this.movementInput.updatePlayerMoveState();
 		if (this.isUsingItem() && !this.isRiding()) {
-			this.movementInput.moveStrafe *= 0.2F;
-			this.movementInput.moveForward *= 0.2F;
-			this.sprintToggleTimer = 0;
+			if (!ModuleManager.getModule("NoSlowDown").isEnabled()) {
+				this.movementInput.moveStrafe *= 0.2F;
+				this.movementInput.moveForward *= 0.2F;
+				this.sprintToggleTimer = 0;
+			}
 		}
 
 		this.pushOutOfBlocks(this.posX - (double) this.width * 0.35D, this.getEntityBoundingBox().minY + 0.5D,
@@ -746,6 +750,15 @@ public class EntityPlayerSP extends AbstractClientPlayer {
 		}
 
 		super.onLivingUpdate();
+		if (ModuleManager.getModule("NoSlowDown").isEnabled()) {
+			float spd = (float) this.getEntityAttribute(SharedMonsterAttributes.movementSpeed).getAttributeValue();
+			if (this.isPotionActive(Potion.moveSlowdown)) {
+				int amp = this.getActivePotionEffect(Potion.moveSlowdown).getAmplifier();
+				double undo = 1.0D / Math.pow(0.85D, (double) (amp + 1));
+				spd *= (float) undo;
+			}
+			this.setAIMoveSpeed(spd);
+		}
 		if (this.onGround && this.capabilities.isFlying && !this.mc.playerController.isSpectatorMode()) {
 			this.capabilities.isFlying = false;
 			this.sendPlayerAbilities();

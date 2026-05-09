@@ -11,6 +11,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.audio.PositionedSoundRecord;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.network.NetHandlerPlayClient;
+import net.minecraft.client.module.CriticalsModule;
+import net.minecraft.client.module.ModuleManager;
+import net.minecraft.client.module.ReachModule;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.passive.EntityHorse;
 import net.minecraft.entity.player.EntityPlayer;
@@ -59,7 +62,7 @@ public class PlayerControllerMP {
 	private final NetHandlerPlayClient netClientHandler;
 	private BlockPos currentBlock = new BlockPos(-1, -1, -1);
 	private ItemStack currentItemHittingBlock;
-	private float curBlockDamageMP;
+	public float curBlockDamageMP;
 	private float stepSoundTickCounter;
 	private int blockHitDelay;
 	private boolean isHittingBlock;
@@ -264,7 +267,7 @@ public class PlayerControllerMP {
 				return false;
 			} else {
 				this.curBlockDamageMP += block.getPlayerRelativeBlockHardness(this.mc.thePlayer,
-						this.mc.thePlayer.worldObj, posBlock);
+						this.mc.thePlayer.worldObj, posBlock) * (ModuleManager.getModule("FastBreak").isEnabled() ? 1.5F : 1.0F);
 				if (this.stepSoundTickCounter % 4.0F == 0.0F) {
 					this.mc.getSoundHandler()
 							.playSound(new PositionedSoundRecord(new ResourceLocation(block.stepSound.getStepSound()),
@@ -297,7 +300,13 @@ public class PlayerControllerMP {
 	 * player reach distance = 4F
 	 */
 	public float getBlockReachDistance() {
+		if (ModuleManager.getModule("Reach").isEnabled()) return ReachModule.EXTENDED_REACH_BLOCKS;
 		return this.currentGameType.isCreative() ? 5.0F : 4.5F;
+	}
+
+	/** Used by Nuker: block the player is currently mining (survival dig progress). */
+	public BlockPos getCurrentBreakingBlockPos() {
+		return this.isHittingBlock && this.currentBlock.getY() >= 0 ? this.currentBlock : null;
 	}
 
 	public void updateController() {
@@ -427,6 +436,9 @@ public class PlayerControllerMP {
 	 */
 	public void attackEntity(EntityPlayer playerIn, Entity targetEntity) {
 		this.syncCurrentPlayItem();
+		if (ModuleManager.getModule("Criticals").isEnabled()) {
+			CriticalsModule.doCrit();
+		}
 		this.netClientHandler.addToSendQueue(new C02PacketUseEntity(targetEntity, C02PacketUseEntity.Action.ATTACK));
 		if (this.currentGameType != WorldSettings.GameType.SPECTATOR) {
 			playerIn.attackTargetEntityWithCurrentItem(targetEntity);

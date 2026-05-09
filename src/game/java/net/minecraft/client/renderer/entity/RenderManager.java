@@ -36,6 +36,8 @@ import net.minecraft.client.renderer.tileentity.RenderEnderCrystal;
 import net.minecraft.client.renderer.tileentity.RenderItemFrame;
 import net.minecraft.client.renderer.tileentity.RenderWitherSkull;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
+import net.minecraft.client.module.FreecamModule;
+import net.minecraft.client.module.ModuleManager;
 import net.minecraft.client.settings.GameSettings;
 import net.minecraft.crash.CrashReport;
 import net.minecraft.crash.CrashReportCategory;
@@ -286,12 +288,20 @@ public class RenderManager {
 			this.playerViewY += 180.0F;
 		}
 
-		this.viewerPosX = livingPlayerIn.lastTickPosX
-				+ (livingPlayerIn.posX - livingPlayerIn.lastTickPosX) * (double) partialTicks;
-		this.viewerPosY = livingPlayerIn.lastTickPosY
-				+ (livingPlayerIn.posY - livingPlayerIn.lastTickPosY) * (double) partialTicks;
-		this.viewerPosZ = livingPlayerIn.lastTickPosZ
-				+ (livingPlayerIn.posZ - livingPlayerIn.lastTickPosZ) * (double) partialTicks;
+		net.minecraft.client.module.Module freecamMod = ModuleManager.getModule("Freecam");
+		if (freecamMod != null && freecamMod.isEnabled() && freecamMod instanceof FreecamModule) {
+			FreecamModule fm = (FreecamModule) freecamMod;
+			this.viewerPosX = fm.getInterpCamX(partialTicks);
+			this.viewerPosY = fm.getInterpCamY(partialTicks);
+			this.viewerPosZ = fm.getInterpCamZ(partialTicks);
+		} else {
+			this.viewerPosX = livingPlayerIn.lastTickPosX
+					+ (livingPlayerIn.posX - livingPlayerIn.lastTickPosX) * (double) partialTicks;
+			this.viewerPosY = livingPlayerIn.lastTickPosY
+					+ (livingPlayerIn.posY - livingPlayerIn.lastTickPosY) * (double) partialTicks;
+			this.viewerPosZ = livingPlayerIn.lastTickPosZ
+					+ (livingPlayerIn.posZ - livingPlayerIn.lastTickPosZ) * (double) partialTicks;
+		}
 	}
 
 	public void setPlayerViewY(float playerViewYIn) {
